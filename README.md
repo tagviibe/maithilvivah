@@ -1,8 +1,8 @@
-# Maithil Vivah - Backend API
+# Maithil Vivah Backend
 
 A comprehensive matrimonial platform backend built with NestJS, PostgreSQL, Redis, Elasticsearch, and BullMQ.
 
-## 🚀 Tech Stack
+## Technology Stack
 
 - **Framework**: NestJS (Node.js 20 LTS)
 - **Database**: PostgreSQL with TypeORM
@@ -14,18 +14,18 @@ A comprehensive matrimonial platform backend built with NestJS, PostgreSQL, Redi
 - **Logging**: Winston with daily rotation
 - **Code Quality**: ESLint, Prettier, Husky
 
-## 📋 Prerequisites
+## Prerequisites
 
 - Node.js 20 LTS
 - Docker & Docker Compose
 - npm or yarn
 
-## 🛠️ Installation
+## Installation
 
 ### 1. Clone the repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/tagviibe/maithilvivah.git
 cd maithilvivah-backend
 ```
 
@@ -94,27 +94,27 @@ Verify all services are running:
 docker-compose ps
 ```
 
-You should see:
+Expected services:
 - `postgres` - Running on port 5432
 - `redis` - Running on port 6379
 - `elasticsearch` - Running on port 9200
 
 ### 5. Start the Application
 
-**Development mode with hot-reload:**
+Development mode with hot-reload:
 
 ```bash
 npm run start:dev
 ```
 
-**Production mode:**
+Production mode:
 
 ```bash
 npm run build
 npm run start:prod
 ```
 
-## 📚 API Documentation
+## API Documentation
 
 Once the application is running, access the Swagger documentation at:
 
@@ -122,7 +122,7 @@ Once the application is running, access the Swagger documentation at:
 http://localhost:3000/api/docs
 ```
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 src/
@@ -144,61 +144,25 @@ src/
 │   ├── search/                      # Elasticsearch configuration
 │   └── queue/                       # BullMQ configuration
 │
-└── modules/                         # Feature modules (to be created)
+└── modules/                         # Feature modules
     ├── auth/                        # Authentication
     ├── users/                       # User management
     ├── profiles/                    # Profile management
     └── matching/                    # Match recommendations
 ```
 
-## 🗄️ Database Schema
+## Database Schema
 
-The database schema is designed with 18 tables covering:
+The database schema includes 18 tables covering:
 
 - **Authentication**: Users, sessions, email verification, password resets
 - **Profiles**: Basic info, community, location, education, family, lifestyle, astrology
 - **Matching**: Partner preferences, match scores, profile views
 - **Media**: Photos, documents with approval workflow
 
-View the complete schema in `database_schema.dbml` and visualize it at [dbdiagram.io](https://dbdiagram.io).
+View the complete schema in `database_schema.dbml`.
 
-## 🧪 Testing
-
-```bash
-# Unit tests
-npm run test
-
-# E2E tests
-npm run test:e2e
-
-# Test coverage
-npm run test:cov
-```
-
-## 🎨 Code Quality
-
-### Linting
-
-```bash
-npm run lint
-```
-
-### Formatting
-
-```bash
-npm run format
-```
-
-### Git Hooks (Husky)
-
-Pre-commit hooks automatically:
-- ✅ Lint staged files
-- ✅ Format code with Prettier
-
-Pre-push hooks automatically:
-- ✅ Run all tests
-
-## 📦 Available Scripts
+## Available Scripts
 
 | Command | Description |
 |---------|-------------|
@@ -212,7 +176,43 @@ Pre-push hooks automatically:
 | `npm run test:e2e` | Run end-to-end tests |
 | `npm run test:cov` | Generate test coverage report |
 
-## 🔍 Health Check
+## Testing
+
+```bash
+# Unit tests
+npm run test
+
+# E2E tests
+npm run test:e2e
+
+# Test coverage
+npm run test:cov
+```
+
+## Code Quality
+
+### Linting
+
+```bash
+npm run lint
+```
+
+### Formatting
+
+```bash
+npm run format
+```
+
+### Git Hooks
+
+Pre-commit hooks automatically:
+- Lint staged files
+- Format code with Prettier
+
+Pre-push hooks automatically:
+- Run all tests
+
+## Health Check
 
 Check if the application is running:
 
@@ -234,16 +234,11 @@ Expected response:
       "elasticsearch": "connected"
     },
     "uptime": 12345
-  },
-  "meta": {
-    "timestamp": "2026-01-30T00:00:00.000Z",
-    "path": "/health",
-    "version": "1.0"
   }
 }
 ```
 
-## 🐳 Docker Commands
+## Docker Commands
 
 ```bash
 # Start all services
@@ -262,7 +257,7 @@ docker-compose restart postgres
 docker-compose down -v
 ```
 
-## 📊 Logging
+## Logging
 
 Logs are stored in the `logs/` directory:
 
@@ -271,17 +266,17 @@ Logs are stored in the `logs/` directory:
 
 Logs are automatically rotated daily and retained for 14 days.
 
-## 🔐 Security
+## Security Features
 
-- ✅ Password hashing with bcrypt
-- ✅ JWT authentication
-- ✅ Rate limiting
-- ✅ CORS configuration
-- ✅ Input validation
-- ✅ SQL injection prevention (TypeORM)
-- ✅ XSS protection
+- Password hashing with bcrypt
+- JWT authentication
+- Rate limiting
+- CORS configuration
+- Input validation
+- SQL injection prevention (TypeORM)
+- XSS protection
 
-## 🚀 Deployment
+## Production Deployment
 
 ### Environment Variables
 
@@ -293,65 +288,13 @@ DB_SYNC=false  # IMPORTANT: Disable auto-sync in production
 JWT_SECRET=<strong-random-secret>
 ```
 
-### Build
+### Build and Start
 
 ```bash
 npm run build
-```
-
-### Start
-
-```bash
 npm run start:prod
 ```
 
-## 📝 Development Workflow
+## License
 
-1. **Create a feature branch**
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-
-2. **Make changes**
-   - Code is automatically linted and formatted on commit (Husky)
-
-3. **Run tests**
-   ```bash
-   npm run test
-   ```
-
-4. **Commit changes**
-   ```bash
-   git add .
-   git commit -m "feat: your feature description"
-   ```
-
-5. **Push to remote**
-   ```bash
-   git push origin feature/your-feature-name
-   ```
-   - Tests run automatically before push (Husky)
-
-## 🤝 Contributing
-
-1. Follow the existing code structure
-2. Use the BaseRepository for database operations
-3. Add proper TypeScript types
-4. Write tests for new features
-5. Update documentation
-
-## 📄 License
-
-[Your License Here]
-
-## 👥 Team
-
-[Your Team Information]
-
-## 📞 Support
-
-For issues and questions, please contact [Your Contact Information]
-
----
-
-**Built with ❤️ using NestJS**
+Proprietary
