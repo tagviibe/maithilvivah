@@ -7,6 +7,7 @@ import { RedisModule } from './infrastructure/redis/redis.module';
 import { SearchModule } from './infrastructure/search/search.module';
 import { QueueModule } from './infrastructure/queue/queue.module';
 import { LoggerModule } from './common/services/logger.module';
+import { ProfilesModule } from './modules/profiles/profiles.module';
 
 @Module({
   imports: [
@@ -44,6 +45,8 @@ import { LoggerModule } from './common/services/logger.module';
 
     // BullMQ for background jobs
     QueueModule,
+
+    ProfilesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

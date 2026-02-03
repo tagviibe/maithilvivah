@@ -12,6 +12,9 @@ export const REGEX_PATTERNS = {
     // Phone (International format)
     PHONE_INTERNATIONAL: /^\+?[1-9]\d{1,14}$/,
 
+    // Phone (alias for PHONE_INDIAN for backward compatibility)
+    PHONE: /^[6-9]\d{9}$/,
+
     // Alphanumeric only
     ALPHANUMERIC: /^[a-zA-Z0-9]+$/,
 
@@ -19,7 +22,7 @@ export const REGEX_PATTERNS = {
     LETTERS_ONLY: /^[a-zA-Z\s]+$/,
 
     // URL
-    URL: /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/,
+    URL: /^(https?:\/\/)?([\ da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/,
 
     // Pincode (Indian)
     PINCODE: /^[1-9][0-9]{5}$/,
