@@ -31,39 +31,40 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AuthController } from './auth.controller';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([
-            User,
-            UserSession,
-            EmailVerification,
-            PasswordReset,
-            PhoneVerification,
-        ]),
-        PassportModule.register({ defaultStrategy: 'jwt' }),
-        JwtModule.registerAsync({
-            imports: [ConfigModule],
-            useFactory: (configService: ConfigService): JwtModuleOptions => ({
-                secret: configService.get<string>('JWT_SECRET') || 'default-jwt-secret',
-                signOptions: {
-                    expiresIn: (configService.get<string>('JWT_EXPIRATION') || '1h') as any,
-                },
-            }),
-            inject: [ConfigService],
-        }),
-    ],
-    controllers: [AuthController],
-    providers: [
-        AuthService,
-        EmailService,
-        SmsService,
-        JwtStrategy,
-        JwtAuthGuard,
-        UserRepository,
-        UserSessionRepository,
-        EmailVerificationRepository,
-        PasswordResetRepository,
-        PhoneVerificationRepository,
-    ],
-    exports: [AuthService, JwtAuthGuard],
+  imports: [
+    TypeOrmModule.forFeature([
+      User,
+      UserSession,
+      EmailVerification,
+      PasswordReset,
+      PhoneVerification,
+    ]),
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService): JwtModuleOptions => ({
+        secret: configService.get<string>('JWT_SECRET') || 'default-jwt-secret',
+        signOptions: {
+          expiresIn: (configService.get<string>('JWT_EXPIRATION') ||
+            '1h') as any,
+        },
+      }),
+      inject: [ConfigService],
+    }),
+  ],
+  controllers: [AuthController],
+  providers: [
+    AuthService,
+    EmailService,
+    SmsService,
+    JwtStrategy,
+    JwtAuthGuard,
+    UserRepository,
+    UserSessionRepository,
+    EmailVerificationRepository,
+    PasswordResetRepository,
+    PhoneVerificationRepository,
+  ],
+  exports: [AuthService, JwtAuthGuard],
 })
-export class AuthModule { }
+export class AuthModule {}

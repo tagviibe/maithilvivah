@@ -40,5 +40,4 @@ import { User } from '../auth/entities/user.entity';
   ],
   exports: [ProfilesService],
 })
-export class ProfilesModule { }
-
+export class ProfilesModule {}

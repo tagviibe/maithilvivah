@@ -6,23 +6,23 @@ export const REDIS_CLIENT = 'REDIS_CLIENT';
 
 @Global()
 @Module({
-    imports: [ConfigModule],
-    providers: [
-        {
-            provide: REDIS_CLIENT,
-            useFactory: (configService: ConfigService) => {
-                return new Redis({
-                    host: configService.get('REDIS_HOST'),
-                    port: configService.get('REDIS_PORT'),
-                    retryStrategy: (times) => {
-                        const delay = Math.min(times * 50, 2000);
-                        return delay;
-                    },
-                });
-            },
-            inject: [ConfigService],
-        },
-    ],
-    exports: [REDIS_CLIENT],
+  imports: [ConfigModule],
+  providers: [
+    {
+      provide: REDIS_CLIENT,
+      useFactory: (configService: ConfigService) => {
+        return new Redis({
+          host: configService.get('REDIS_HOST'),
+          port: configService.get('REDIS_PORT'),
+          retryStrategy: (times) => {
+            const delay = Math.min(times * 50, 2000);
+            return delay;
+          },
+        });
+      },
+      inject: [ConfigService],
+    },
+  ],
+  exports: [REDIS_CLIENT],
 })
-export class RedisModule { }
+export class RedisModule {}

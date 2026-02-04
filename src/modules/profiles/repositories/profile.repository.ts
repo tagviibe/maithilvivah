@@ -12,149 +12,164 @@ import { LifestyleInfoDto } from '../dto/lifestyle-info.dto';
 
 @Injectable()
 export class ProfileRepository extends BaseRepository<Profile> {
-    protected entityName = 'Profile';
+  protected entityName = 'Profile';
 
-    constructor(
-        @InjectRepository(Profile)
-        protected repository: Repository<Profile>,
-    ) {
-        super();
+  constructor(
+    @InjectRepository(Profile)
+    protected repository: Repository<Profile>,
+  ) {
+    super();
+  }
+
+  async findByUserId(userId: string): Promise<Profile | null> {
+    const startTime = Date.now();
+    const profile = await this.repository.findOne({
+      where: { user_id: userId },
+    });
+
+    this.logger.logDatabaseQuery(
+      `SELECT * FROM profiles WHERE user_id = $1`,
+      [userId],
+      Date.now() - startTime,
+    );
+
+    return profile;
+  }
+
+  async createProfile(userId: string): Promise<Profile> {
+    const startTime = Date.now();
+    const profile = this.repository.create({ user_id: userId });
+    const savedProfile = await this.repository.save(profile);
+
+    this.logger.logDatabaseQuery(
+      `INSERT INTO profiles (user_id) VALUES ($1)`,
+      [userId],
+      Date.now() - startTime,
+    );
+
+    return savedProfile;
+  }
+
+  async updateBasicInfo(userId: string, data: BasicInfoDto): Promise<Profile> {
+    const startTime = Date.now();
+    await this.repository.update({ user_id: userId }, data);
+    const profile = await this.findByUserId(userId);
+
+    this.logger.logDatabaseQuery(
+      `UPDATE profiles SET ... WHERE user_id = $1`,
+      [userId],
+      Date.now() - startTime,
+    );
+
+    if (!profile) {
+      throw new Error('Profile not found after update');
     }
 
-    async findByUserId(userId: string): Promise<Profile | null> {
-        const startTime = Date.now();
-        const profile = await this.repository.findOne({
-            where: { user_id: userId },
-        });
+    return profile;
+  }
 
-        this.logger.logDatabaseQuery(
-            `SELECT * FROM profiles WHERE user_id = $1`,
-            [userId],
-            Date.now() - startTime,
-        );
+  async updateCommunityInfo(
+    userId: string,
+    data: CommunityInfoDto,
+  ): Promise<Profile> {
+    const startTime = Date.now();
+    await this.repository.update({ user_id: userId }, data);
+    const profile = await this.findByUserId(userId);
 
-        return profile;
+    this.logger.logDatabaseQuery(
+      `UPDATE profiles SET ... WHERE user_id = $1`,
+      [userId],
+      Date.now() - startTime,
+    );
+
+    if (!profile) {
+      throw new Error('Profile not found after update');
     }
 
-    async createProfile(userId: string): Promise<Profile> {
-        const startTime = Date.now();
-        const profile = this.repository.create({ user_id: userId });
-        const savedProfile = await this.repository.save(profile);
+    return profile;
+  }
 
-        this.logger.logDatabaseQuery(
-            `INSERT INTO profiles (user_id) VALUES ($1)`,
-            [userId],
-            Date.now() - startTime,
-        );
+  async updateLocationInfo(
+    userId: string,
+    data: LocationInfoDto,
+  ): Promise<Profile> {
+    const startTime = Date.now();
+    await this.repository.update({ user_id: userId }, data);
+    const profile = await this.findByUserId(userId);
 
-        return savedProfile;
+    this.logger.logDatabaseQuery(
+      `UPDATE profiles SET ... WHERE user_id = $1`,
+      [userId],
+      Date.now() - startTime,
+    );
+
+    if (!profile) {
+      throw new Error('Profile not found after update');
     }
 
-    async updateBasicInfo(userId: string, data: BasicInfoDto): Promise<Profile> {
-        const startTime = Date.now();
-        await this.repository.update({ user_id: userId }, data);
-        const profile = await this.findByUserId(userId);
+    return profile;
+  }
 
-        this.logger.logDatabaseQuery(
-            `UPDATE profiles SET ... WHERE user_id = $1`,
-            [userId],
-            Date.now() - startTime,
-        );
+  async updateEducationInfo(
+    userId: string,
+    data: EducationInfoDto,
+  ): Promise<Profile> {
+    const startTime = Date.now();
+    await this.repository.update({ user_id: userId }, data);
+    const profile = await this.findByUserId(userId);
 
-        if (!profile) {
-            throw new Error('Profile not found after update');
-        }
+    this.logger.logDatabaseQuery(
+      `UPDATE profiles SET ... WHERE user_id = $1`,
+      [userId],
+      Date.now() - startTime,
+    );
 
-        return profile;
+    if (!profile) {
+      throw new Error('Profile not found after update');
     }
 
-    async updateCommunityInfo(userId: string, data: CommunityInfoDto): Promise<Profile> {
-        const startTime = Date.now();
-        await this.repository.update({ user_id: userId }, data);
-        const profile = await this.findByUserId(userId);
+    return profile;
+  }
 
-        this.logger.logDatabaseQuery(
-            `UPDATE profiles SET ... WHERE user_id = $1`,
-            [userId],
-            Date.now() - startTime,
-        );
+  async updateFamilyInfo(
+    userId: string,
+    data: FamilyInfoDto,
+  ): Promise<Profile> {
+    const startTime = Date.now();
+    await this.repository.update({ user_id: userId }, data);
+    const profile = await this.findByUserId(userId);
 
-        if (!profile) {
-            throw new Error('Profile not found after update');
-        }
+    this.logger.logDatabaseQuery(
+      `UPDATE profiles SET ... WHERE user_id = $1`,
+      [userId],
+      Date.now() - startTime,
+    );
 
-        return profile;
+    if (!profile) {
+      throw new Error('Profile not found after update');
     }
 
-    async updateLocationInfo(userId: string, data: LocationInfoDto): Promise<Profile> {
-        const startTime = Date.now();
-        await this.repository.update({ user_id: userId }, data);
-        const profile = await this.findByUserId(userId);
+    return profile;
+  }
 
-        this.logger.logDatabaseQuery(
-            `UPDATE profiles SET ... WHERE user_id = $1`,
-            [userId],
-            Date.now() - startTime,
-        );
+  async updateLifestyleInfo(
+    userId: string,
+    data: LifestyleInfoDto,
+  ): Promise<Profile> {
+    const startTime = Date.now();
+    await this.repository.update({ user_id: userId }, data);
+    const profile = await this.findByUserId(userId);
 
-        if (!profile) {
-            throw new Error('Profile not found after update');
-        }
+    this.logger.logDatabaseQuery(
+      `UPDATE profiles SET ... WHERE user_id = $1`,
+      [userId],
+      Date.now() - startTime,
+    );
 
-        return profile;
+    if (!profile) {
+      throw new Error('Profile not found after update');
     }
 
-    async updateEducationInfo(userId: string, data: EducationInfoDto): Promise<Profile> {
-        const startTime = Date.now();
-        await this.repository.update({ user_id: userId }, data);
-        const profile = await this.findByUserId(userId);
-
-        this.logger.logDatabaseQuery(
-            `UPDATE profiles SET ... WHERE user_id = $1`,
-            [userId],
-            Date.now() - startTime,
-        );
-
-        if (!profile) {
-            throw new Error('Profile not found after update');
-        }
-
-        return profile;
-    }
-
-    async updateFamilyInfo(userId: string, data: FamilyInfoDto): Promise<Profile> {
-        const startTime = Date.now();
-        await this.repository.update({ user_id: userId }, data);
-        const profile = await this.findByUserId(userId);
-
-        this.logger.logDatabaseQuery(
-            `UPDATE profiles SET ... WHERE user_id = $1`,
-            [userId],
-            Date.now() - startTime,
-        );
-
-        if (!profile) {
-            throw new Error('Profile not found after update');
-        }
-
-        return profile;
-    }
-
-    async updateLifestyleInfo(userId: string, data: LifestyleInfoDto): Promise<Profile> {
-        const startTime = Date.now();
-        await this.repository.update({ user_id: userId }, data);
-        const profile = await this.findByUserId(userId);
-
-        this.logger.logDatabaseQuery(
-            `UPDATE profiles SET ... WHERE user_id = $1`,
-            [userId],
-            Date.now() - startTime,
-        );
-
-        if (!profile) {
-            throw new Error('Profile not found after update');
-        }
-
-        return profile;
-    }
+    return profile;
+  }
 }
