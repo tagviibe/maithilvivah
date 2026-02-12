@@ -48,11 +48,34 @@ export class ProfilesService {
         private readonly logger: LoggerService,
     ) { }
 
+    // Profile For
+    async updateProfileFor(userId: string, profileFor: string, onboardingStep?: number) {
+        const updateData: any = { profile_for: profileFor };
+        if (onboardingStep !== undefined) {
+            updateData.onboarding_step = onboardingStep;
+            updateData.last_onboarding_activity = new Date();
+        }
+        await this.userRepository.update(userId, updateData);
+        this.logger.log(`Profile-for updated for user: ${userId} to ${profileFor}`, 'ProfilesService');
+        return { profileFor };
+    }
+
+    // Onboarding Step
+    async updateOnboardingStep(userId: string, step: number) {
+        await this.userRepository.update(userId, {
+            onboarding_step: step,
+            last_onboarding_activity: new Date(),
+        });
+        return { onboardingStep: step };
+    }
+
     // Basic Info
     async updateBasicInfo(userId: string, data: BasicInfoDto) {
+        this.logger.log(`updateBasicInfo called with userId: "${userId}", data keys: ${Object.keys(data).join(', ')}`, 'ProfilesService');
         let profile = await this.profileRepository.findByUserId(userId);
 
         if (!profile) {
+            this.logger.log(`No profile found, creating for userId: "${userId}"`, 'ProfilesService');
             profile = await this.profileRepository.createProfile(userId);
         }
 
@@ -458,12 +481,29 @@ export class ProfilesService {
             await this.partnerPreferencesRepository.findByUserId(userId);
         const hasPhotos =
             await this.profilePhotoRepository.hasApprovedPhoto(userId);
-        const user = await this.userRepository.findById(userId);
+
+        let user;
+        try {
+            user = await this.userRepository.findById(userId);
+        } catch {
+            return {
+                currentStep: 0,
+                currentSection: null,
+                lastCompletedSection: null,
+                nextRecommendedSection: 'basic-info',
+                completionPercentage: 0,
+                progress: {},
+                lastActivity: null,
+                onboardingCompleted: false,
+                profileFor: 'self',
+                profileData: null,
+            };
+        }
 
         const progress = {};
         let lastCompletedSection: string | null = null;
-        const currentSection = user.last_active_section || 'basic-info';
-        let currentStep = user.onboarding_step || 1;
+        const currentSection = user.last_active_section || null;
+        let currentStep = user.onboarding_step || 0;
 
         for (let i = 0; i < this.SECTION_ORDER.length; i++) {
             const section = this.SECTION_ORDER[i];
@@ -482,7 +522,6 @@ export class ProfilesService {
 
             if (isCompleted) {
                 lastCompletedSection = section;
-                currentStep = i + 2; // Next step
             }
         }
 
@@ -503,6 +542,26 @@ export class ProfilesService {
             completionPercentage,
             progress,
             lastActivity: user.last_onboarding_activity,
+            onboardingCompleted: user.onboarding_completed || false,
+            profileFor: user.profile_for || 'self',
+            profileData: profile ? {
+                first_name: profile.first_name,
+                last_name: profile.last_name,
+                date_of_birth: profile.date_of_birth,
+                gender: profile.gender,
+                height_cm: profile.height_cm,
+                marital_status: profile.marital_status,
+                religion: profile.religion,
+                caste: profile.caste,
+                mother_tongue: profile.mother_tongue,
+                highest_education: profile.highest_education,
+                occupation: profile.occupation,
+                occupation_details: profile.occupation_details,
+                annual_income: profile.annual_income,
+                father_name: profile.father_name,
+                mother_name: profile.mother_name,
+                family_type: profile.family_type,
+            } : null,
         };
     }
 
@@ -511,16 +570,25 @@ export class ProfilesService {
         userId: string,
         sectionName: string,
         action: string,
+        onboardingStep?: number,
     ) {
         const completionPercentage = await this.calculateProfileCompletion(userId);
 
-        // Update user's progress fields
-        await this.userRepository.update(userId, {
+        const updateData: any = {
             last_active_section: sectionName,
             last_onboarding_activity: new Date(),
-            onboarding_step: this.SECTION_ORDER.indexOf(sectionName) + 1,
             profile_completion_percentage: completionPercentage,
-        });
+        };
+
+        // Use the frontend step number if provided, otherwise derive from section
+        if (onboardingStep !== undefined) {
+            updateData.onboarding_step = onboardingStep;
+        } else {
+            updateData.onboarding_step = this.SECTION_ORDER.indexOf(sectionName) + 1;
+        }
+
+        // Update user's progress fields
+        await this.userRepository.update(userId, updateData);
 
         // Log progress
         await this.progressLogRepository.logProgress(
@@ -535,14 +603,9 @@ export class ProfilesService {
     async completeOnboarding(userId: string) {
         const completionPercentage = await this.calculateProfileCompletion(userId);
 
-        if (completionPercentage < 100) {
-            throw new BadRequestException(
-                `Profile is only ${completionPercentage}% complete. Please complete all sections.`,
-            );
-        }
-
         await this.userRepository.update(userId, {
             onboarding_completed: true,
+            profile_completion_percentage: completionPercentage,
         });
 
         await this.progressLogRepository.logProgress(

@@ -1,20 +1,24 @@
+version: '3.8'
+
 services:
   postgres:
     image: postgres:16-alpine
     container_name: maithilvivah-postgres
     restart: unless-stopped
+    env_file:
+      - .env.production
     environment:
-      POSTGRES_DB: ${DB_NAME:-maithilvivah}
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: maithilvivah
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: MaithilDB@2026!Secure
     ports:
-      - "5434:5432" # Changed to 5434 to avoid conflict with local PostgreSQL
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - maithilvivah-network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}" ]
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -71,30 +75,8 @@ services:
     restart: unless-stopped
     ports:
       - "5001:3000"
-    environment:
-      NODE_ENV: ${NODE_ENV:-development}
-      PORT: 3000
-
-      # Database
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-postgres}
-      DB_NAME: ${DB_NAME:-maithilvivah}
-      DB_SYNC: ${DB_SYNC:-true}
-
-      # Redis
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-
-      # Elasticsearch
-      ELASTICSEARCH_NODE: http://elasticsearch:9200
-      ELASTICSEARCH_INDEX_PREFIX: maithilvivah
-
-      # JWT
-      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
-      JWT_EXPIRATION: ${JWT_EXPIRATION:-7d}
-
+    env_file:
+      - .env.production
     depends_on:
       postgres:
         condition: service_healthy
@@ -104,9 +86,6 @@ services:
         condition: service_healthy
     networks:
       - maithilvivah-network
-    volumes:
-      - ./src:/app/src
-      - ./node_modules:/app/node_modules
 
 volumes:
   postgres_data:

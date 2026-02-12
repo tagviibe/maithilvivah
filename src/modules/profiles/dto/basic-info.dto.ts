@@ -17,30 +17,35 @@ import {
 } from '../enums/profile.enums';
 
 export class BasicInfoDto {
+  @IsOptional()
   @IsString()
   @MaxLength(100)
-  first_name: string;
+  first_name?: string;
 
   @IsOptional()
   @IsString()
   @MaxLength(100)
   middle_name?: string;
 
+  @IsOptional()
   @IsString()
   @MaxLength(100)
-  last_name: string;
+  last_name?: string;
 
+  @IsOptional()
   @IsDate()
   @Type(() => Date)
-  date_of_birth: Date;
+  date_of_birth?: Date;
 
+  @IsOptional()
   @IsEnum(Gender)
-  gender: Gender;
+  gender?: Gender;
 
+  @IsOptional()
   @IsInt()
   @Min(120)
   @Max(250)
-  height_cm: number;
+  height_cm?: number;
 
   @IsOptional()
   @IsInt()
@@ -48,8 +53,9 @@ export class BasicInfoDto {
   @Max(200)
   weight_kg?: number;
 
+  @IsOptional()
   @IsEnum(MaritalStatus)
-  marital_status: MaritalStatus;
+  marital_status?: MaritalStatus;
 
   @IsOptional()
   @IsEnum(BodyType)

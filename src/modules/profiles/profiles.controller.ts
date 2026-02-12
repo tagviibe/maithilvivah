@@ -23,7 +23,24 @@ import * as requestType from '@/common/types/request.type';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class ProfilesController {
-  constructor(private readonly profilesService: ProfilesService) {}
+  constructor(private readonly profilesService: ProfilesService) { }
+
+  // ==================== PROFILE FOR ====================
+  @Patch(API_ROUTES.PROFILES.PROFILE_FOR)
+  @ApiOperation({ summary: 'Update profile-for selection' })
+  @ApiResponse({ status: 200, description: 'Profile-for updated successfully' })
+  async updateProfileFor(
+    @Req() req: requestType.AuthenticatedRequest,
+    @Body() body: { profileFor: string; onboardingStep?: number },
+  ) {
+    const userId = req.user.userId;
+    const data = await this.profilesService.updateProfileFor(userId, body.profileFor, body.onboardingStep);
+    return {
+      success: true,
+      message: 'Profile-for updated successfully',
+      data,
+    };
+  }
 
   // ==================== BASIC INFO ====================
   @Get(API_ROUTES.PROFILES.BASIC_INFO)

@@ -10,18 +10,20 @@ import {
 import { FamilyType, FamilyStatus, FamilyValues } from '../enums/profile.enums';
 
 export class FamilyInfoDto {
+  @IsOptional()
   @IsString()
   @MaxLength(100)
-  father_name: string;
+  father_name?: string;
 
   @IsOptional()
   @IsString()
   @MaxLength(100)
   father_occupation?: string;
 
+  @IsOptional()
   @IsString()
   @MaxLength(100)
-  mother_name: string;
+  mother_name?: string;
 
   @IsOptional()
   @IsString()
@@ -52,8 +54,9 @@ export class FamilyInfoDto {
   @Max(20)
   sisters_married?: number;
 
+  @IsOptional()
   @IsEnum(FamilyType)
-  family_type: FamilyType;
+  family_type?: FamilyType;
 
   @IsOptional()
   @IsEnum(FamilyStatus)

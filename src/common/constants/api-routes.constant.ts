@@ -20,6 +20,12 @@ export const API_ROUTES = {
     LOGOUT_ALL: 'logout-all',
     GOOGLE: 'google',
     GOOGLE_CALLBACK: 'google/callback',
+    SEND_LOGIN_OTP: 'send-login-otp',
+    VERIFY_OTP_LOGIN: 'verify-otp-login',
+    REGISTER_INIT: 'register-init',
+    VERIFY_EMAIL_REGISTRATION: 'verify-email-registration',
+    VERIFY_PHONE_REGISTRATION: 'verify-phone-registration',
+    COMPLETE_REGISTRATION: 'complete-registration',
   },
   USERS: {
     BASE: 'users',
@@ -42,6 +48,8 @@ export const API_ROUTES = {
     COMPLETION: 'completion',
     RESUME_JOURNEY: 'resume-journey',
     COMPLETE: 'complete',
+    PROFILE_FOR: 'profile-for',
+    ONBOARDING_STEP: 'onboarding-step',
     ME: 'me',
   },
   MATCHING: {

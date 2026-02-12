@@ -1,21 +1,46 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as sgMail from '@sendgrid/mail';
+import sgMail from '@sendgrid/mail';
 import { LoggerService } from '../../../common/services/logger.service';
 
 @Injectable()
 export class EmailService {
+  private isConfigured = false;
+
   constructor(
     private readonly configService: ConfigService,
     private readonly logger: LoggerService,
   ) {
     const apiKey = this.configService.get<string>('SENDGRID_API_KEY');
-    if (apiKey) {
-      sgMail.setApiKey(apiKey);
+    if (apiKey && apiKey !== 'your-sendgrid-api-key') {
+      try {
+        sgMail.setApiKey(apiKey);
+        this.isConfigured = true;
+        this.logger.log('SendGrid configured successfully', 'EmailService');
+      } catch (error) {
+        this.logger.warn(
+          'Failed to configure SendGrid',
+          'EmailService',
+        );
+      }
+    } else {
+      this.logger.warn(
+        'SendGrid API key not configured. Email sending will be skipped.',
+        'EmailService',
+      );
     }
   }
 
+
   async sendVerificationEmail(email: string, token: string): Promise<void> {
+    if (!this.isConfigured) {
+      this.logger.warn(
+        `SendGrid not configured. Skipping verification email to: ${email}`,
+        'EmailService',
+      );
+      return;
+    }
+
     const frontendUrl = this.configService.get<string>('FRONTEND_URL');
     const verificationLink = `${frontendUrl}/verify-email?token=${token}`;
 
@@ -55,7 +80,16 @@ export class EmailService {
     }
   }
 
+
   async sendPasswordResetEmail(email: string, token: string): Promise<void> {
+    if (!this.isConfigured) {
+      this.logger.warn(
+        `SendGrid not configured. Skipping password reset email to: ${email}`,
+        'EmailService',
+      );
+      return;
+    }
+
     const frontendUrl = this.configService.get<string>('FRONTEND_URL');
     const resetLink = `${frontendUrl}/reset-password?token=${token}`;
 

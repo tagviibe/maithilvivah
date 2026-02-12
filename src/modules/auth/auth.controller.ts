@@ -36,7 +36,7 @@ import { MESSAGES, API_ROUTES } from '../../common/constants';
 @ApiTags('Authentication')
 @Controller(API_ROUTES.AUTH.BASE)
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   @Post(API_ROUTES.AUTH.REGISTER)
   @HttpCode(HttpStatus.CREATED)
@@ -383,6 +383,120 @@ export class AuthController {
     return {
       success: true,
       message: MESSAGES.SUCCESS.AUTH.ALL_SESSIONS_LOGGED_OUT,
+    };
+  }
+
+  @Post(API_ROUTES.AUTH.SEND_LOGIN_OTP)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send OTP for login (email or phone)' })
+  @SwaggerResponse({
+    status: 200,
+    description: 'OTP sent successfully',
+  })
+  async sendLoginOtp(@Body() body: { email?: string; phone?: string }) {
+    await this.authService.sendLoginOTP(body.email, body.phone);
+    return {
+      success: true,
+      message: 'OTP sent successfully',
+    };
+  }
+
+  @Post(API_ROUTES.AUTH.VERIFY_OTP_LOGIN)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify OTP and login' })
+  @SwaggerResponse({
+    status: 200,
+    description: 'Login successful',
+  })
+  async verifyOtpLogin(
+    @Body() body: { email?: string; phone?: string; otp: string },
+    @Ip() ipAddress: string,
+    @Headers('user-agent') userAgent: string,
+  ) {
+    const result = await this.authService.verifyOTPAndLogin(
+      body.email,
+      body.phone,
+      body.otp,
+      ipAddress,
+      userAgent,
+    );
+    return {
+      success: true,
+      message: 'Login successful',
+      data: result,
+    };
+  }
+
+  @Post(API_ROUTES.AUTH.REGISTER_INIT)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Initialize registration and send OTPs' })
+  @SwaggerResponse({
+    status: 200,
+    description: 'OTPs sent successfully',
+  })
+  async registerInit(@Body() body: { email: string; phone: string }) {
+    const result = await this.authService.registerInit(body.email, body.phone);
+    return {
+      success: true,
+      message: 'Verification codes sent to email and phone',
+      data: result,
+    };
+  }
+
+  @Post(API_ROUTES.AUTH.VERIFY_EMAIL_REGISTRATION)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify email OTP during registration' })
+  @SwaggerResponse({
+    status: 200,
+    description: 'Email verified successfully',
+  })
+  async verifyEmailRegistration(@Body() body: { tempUserId: string; emailOtp: string }) {
+    await this.authService.verifyEmailRegistration(body.tempUserId, body.emailOtp);
+    return {
+      success: true,
+      message: 'Email verified successfully',
+    };
+  }
+
+  @Post(API_ROUTES.AUTH.VERIFY_PHONE_REGISTRATION)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify phone OTP during registration' })
+  @SwaggerResponse({
+    status: 200,
+    description: 'Phone verified successfully',
+  })
+  async verifyPhoneRegistration(@Body() body: { tempUserId: string; phoneOtp: string }) {
+    await this.authService.verifyPhoneRegistration(body.tempUserId, body.phoneOtp);
+    return {
+      success: true,
+      message: 'Phone verified successfully',
+    };
+  }
+
+  @Post(API_ROUTES.AUTH.COMPLETE_REGISTRATION)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Complete registration with password' })
+  @SwaggerResponse({
+    status: 200,
+    description: 'Registration completed successfully',
+  })
+  async completeRegistration(
+    @Body() body: { tempUserId: string; password: string; profileFor: string; createdBy: string },
+    @Ip() ipAddress: string,
+    @Headers('user-agent') userAgent: string,
+  ) {
+    const result = await this.authService.completeRegistration(
+      body.tempUserId,
+      body.password,
+      body.profileFor,
+      body.createdBy,
+      ipAddress,
+      userAgent,
+    );
+    return {
+      success: true,
+      message: 'Registration completed successfully',
+      data: result,
     };
   }
 }

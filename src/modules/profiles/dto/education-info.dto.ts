@@ -2,8 +2,9 @@ import { IsString, IsEnum, IsOptional, MaxLength } from 'class-validator';
 import { EducationLevel } from '../enums/profile.enums';
 
 export class EducationInfoDto {
+  @IsOptional()
   @IsEnum(EducationLevel)
-  highest_education: EducationLevel;
+  highest_education?: EducationLevel;
 
   @IsOptional()
   @IsString()
@@ -15,9 +16,10 @@ export class EducationInfoDto {
   @MaxLength(255)
   college_name?: string;
 
+  @IsOptional()
   @IsString()
   @MaxLength(100)
-  occupation: string;
+  occupation?: string;
 
   @IsOptional()
   @IsString()

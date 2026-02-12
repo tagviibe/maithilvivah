@@ -10,6 +10,7 @@ import { UserSession } from './entities/user-session.entity';
 import { EmailVerification } from './entities/email-verification.entity';
 import { PasswordReset } from './entities/password-reset.entity';
 import { PhoneVerification } from './entities/phone-verification.entity';
+import { TempRegistration } from './entities/temp-registration.entity';
 
 // Repositories
 import { UserRepository } from './repositories/user.repository';
@@ -17,6 +18,7 @@ import { UserSessionRepository } from './repositories/user-session.repository';
 import { EmailVerificationRepository } from './repositories/email-verification.repository';
 import { PasswordResetRepository } from './repositories/password-reset.repository';
 import { PhoneVerificationRepository } from './repositories/phone-verification.repository';
+import { TempRegistrationRepository } from './repositories/temp-registration.repository';
 
 // Services
 import { AuthService } from './services/auth.service';
@@ -38,6 +40,7 @@ import { AuthController } from './auth.controller';
       EmailVerification,
       PasswordReset,
       PhoneVerification,
+      TempRegistration,
     ]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
@@ -64,7 +67,8 @@ import { AuthController } from './auth.controller';
     EmailVerificationRepository,
     PasswordResetRepository,
     PhoneVerificationRepository,
+    TempRegistrationRepository,
   ],
   exports: [AuthService, JwtAuthGuard],
 })
-export class AuthModule {}
+export class AuthModule { }

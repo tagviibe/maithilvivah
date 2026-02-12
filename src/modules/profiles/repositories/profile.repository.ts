@@ -38,14 +38,23 @@ export class ProfileRepository extends BaseRepository<Profile> {
 
   async createProfile(userId: string): Promise<Profile> {
     const startTime = Date.now();
-    const profile = this.repository.create({ user_id: userId });
-    const savedProfile = await this.repository.save(profile);
+
+    await this.repository.query(
+      `INSERT INTO profiles (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`,
+      [userId],
+    );
+
+    const savedProfile = await this.findByUserId(userId);
 
     this.logger.logDatabaseQuery(
       `INSERT INTO profiles (user_id) VALUES ($1)`,
       [userId],
       Date.now() - startTime,
     );
+
+    if (!savedProfile) {
+      throw new Error('Failed to create profile');
+    }
 
     return savedProfile;
   }

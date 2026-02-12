@@ -16,6 +16,7 @@ import { UserSessionRepository } from '../repositories/user-session.repository';
 import { EmailVerificationRepository } from '../repositories/email-verification.repository';
 import { PasswordResetRepository } from '../repositories/password-reset.repository';
 import { PhoneVerificationRepository } from '../repositories/phone-verification.repository';
+import { TempRegistrationRepository } from '../repositories/temp-registration.repository';
 import { EmailService } from './email.service';
 import { SmsService } from './sms.service';
 import { RegisterDto } from '../dto/register.dto';
@@ -37,12 +38,13 @@ export class AuthService {
     private readonly emailVerificationRepository: EmailVerificationRepository,
     private readonly passwordResetRepository: PasswordResetRepository,
     private readonly phoneVerificationRepository: PhoneVerificationRepository,
+    private readonly tempRegistrationRepository: TempRegistrationRepository,
     private readonly emailService: EmailService,
     private readonly smsService: SmsService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly logger: LoggerService,
-  ) {}
+  ) { }
 
   async register(
     registerDto: RegisterDto,
@@ -137,9 +139,18 @@ export class AuthService {
     refreshToken: string;
     user: Partial<User>;
   }> {
-    const { email, password } = loginDto;
+    const { email, phone, password } = loginDto;
 
-    const user = await this.userRepository.findByEmail(email);
+    if (!email && !phone) {
+      throw new BadRequestException('Email or phone number is required');
+    }
+
+    let user: User | null;
+    if (email) {
+      user = await this.userRepository.findByEmail(email);
+    } else {
+      user = await this.userRepository.findByPhone(phone!);
+    }
 
     if (!user) {
       throw new UnauthorizedException(MESSAGES.ERROR.AUTH.INVALID_CREDENTIALS);
@@ -191,13 +202,14 @@ export class AuthService {
 
     const tokens = await this.generateTokens(user, ipAddress, userAgent);
 
-    this.logger.log(`User logged in successfully: ${email}`, 'AuthService');
+    this.logger.log(`User logged in successfully: ${email || phone}`, 'AuthService');
 
     return {
       ...tokens,
       user: {
         id: user.id,
         email: user.email,
+        phone: user.phone,
         email_verified: user.email_verified,
         onboarding_completed: user.onboarding_completed,
         profile_completion_percentage: user.profile_completion_percentage,
@@ -358,8 +370,8 @@ export class AuthService {
   async sendPhoneOTP(phone: string, userId?: string): Promise<void> {
     const nodeEnv = this.configService.get<string>('NODE_ENV');
 
-    // Generate OTP (will be overridden in UAT mode)
-    const otp = nodeEnv === 'uat' ? this.UAT_OTP : this.generateOTP();
+    // Generate OTP (use hardcoded in non-production)
+    const otp = nodeEnv === 'production' ? this.generateOTP() : this.UAT_OTP;
 
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + this.OTP_EXPIRY_MINUTES);
@@ -371,8 +383,14 @@ export class AuthService {
       const user = await this.userRepository.findByPhone(phone);
       if (user) {
         targetUserId = user.id;
+      } else if (nodeEnv !== 'production') {
+        // In dev mode, just log and return - OTP is hardcoded anyway
+        this.logger.log(
+          `[DEV MODE] Phone OTP requested for non-existent user: ${phone} - Use OTP: 123456`,
+          'AuthService',
+        );
+        return;
       } else {
-        // For new registrations, we'll handle this differently
         throw new BadRequestException('User not found with this phone number');
       }
     }
@@ -387,7 +405,7 @@ export class AuthService {
     await this.smsService.sendOTP(phone, otp);
 
     this.logger.log(
-      `OTP sent to ${phone}${nodeEnv === 'uat' ? ' [UAT MODE]' : ''}`,
+      `OTP sent to ${phone}${nodeEnv !== 'production' ? ' [DEV MODE - OTP: 123456]' : ''}`,
       'AuthService',
     );
   }
@@ -566,5 +584,333 @@ export class AuthService {
       `All sessions logged out for user: ${userId}`,
       'AuthService',
     );
+  }
+
+  // OTP-based Login Methods
+  async sendLoginOTP(email?: string, phone?: string): Promise<void> {
+    if (!email && !phone) {
+      throw new BadRequestException('Email or phone number is required');
+    }
+
+    const nodeEnv = this.configService.get<string>('NODE_ENV');
+
+    let user: User | null;
+    if (email) {
+      user = await this.userRepository.findByEmail(email);
+    } else {
+      user = await this.userRepository.findByPhone(phone!);
+    }
+
+    if (!user) {
+      // In non-production mode, just log and return success
+      // OTP is hardcoded to 123456 anyway, no DB record needed
+      if (nodeEnv !== 'production') {
+        this.logger.log(
+          `[DEV MODE] Login OTP requested for non-existent user: ${email || phone} - Use OTP: 123456`,
+          'AuthService',
+        );
+        return;
+      }
+      throw new NotFoundException('User not found with this email or phone');
+    }
+
+    const otp = nodeEnv === 'production' ? this.generateOTP() : this.UAT_OTP;
+
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + this.OTP_EXPIRY_MINUTES);
+
+    if (phone) {
+      await this.phoneVerificationRepository.create({
+        user_id: user.id,
+        phone,
+        otp,
+        expires_at: expiresAt,
+      });
+
+      await this.smsService.sendOTP(phone, otp);
+      this.logger.log(
+        `Login OTP sent to ${phone}${nodeEnv !== 'production' ? ' [TEST MODE - OTP: 123456]' : ''}`,
+        'AuthService',
+      );
+    } else if (email) {
+      this.logger.log(
+        `Login OTP for email not implemented yet: ${email}`,
+        'AuthService',
+      );
+      throw new BadRequestException('Email OTP login not yet supported. Please use phone number.');
+    }
+  }
+
+  async verifyOTPAndLogin(
+    email: string | undefined,
+    phone: string | undefined,
+    otp: string,
+    ipAddress: string,
+    userAgent: string,
+  ): Promise<{
+    accessToken: string;
+    refreshToken: string;
+    user: Partial<User>;
+  }> {
+    if (!email && !phone) {
+      throw new BadRequestException('Email or phone number is required');
+    }
+
+    const nodeEnv = this.configService.get<string>('NODE_ENV');
+
+    let user: User | null;
+    if (email) {
+      user = await this.userRepository.findByEmail(email);
+    } else {
+      user = await this.userRepository.findByPhone(phone!);
+    }
+
+    // In non-production mode, if user doesn't exist, auto-create them
+    if (!user && nodeEnv !== 'production') {
+      if (otp !== this.UAT_OTP) {
+        throw new BadRequestException(MESSAGES.ERROR.AUTH.INVALID_OTP);
+      }
+
+      const dummyPassword = await bcrypt.hash('Temp@1234', this.SALT_ROUNDS);
+      user = await this.userRepository.create({
+        email: email || `${phone!.replace(/\+/g, '')}@dev.maithilvivah.com`,
+        phone: phone || undefined,
+        password_hash: dummyPassword,
+        email_verified: true,
+        phone_verified: true,
+        profile_for: 'self',
+        created_by: 'self',
+      });
+
+      this.logger.log(
+        `[DEV MODE] Auto-created user for OTP login: ${email || phone} (ID: ${user.id})`,
+        'AuthService',
+      );
+    } else if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    if (user.account_status !== 'active') {
+      throw new UnauthorizedException(MESSAGES.ERROR.AUTH.ACCOUNT_SUSPENDED);
+    }
+
+    // Verify OTP
+    if (phone) {
+      if (nodeEnv !== 'production') {
+        // In dev mode, just check against hardcoded OTP
+        if (otp !== this.UAT_OTP) {
+          throw new BadRequestException(MESSAGES.ERROR.AUTH.INVALID_OTP);
+        }
+      } else {
+        const verification =
+          await this.phoneVerificationRepository.findByPhone(phone);
+
+        if (!verification) {
+          throw new BadRequestException(MESSAGES.ERROR.AUTH.INVALID_OTP);
+        }
+
+        if (new Date() > verification.expires_at) {
+          throw new BadRequestException(MESSAGES.ERROR.AUTH.OTP_EXPIRED);
+        }
+
+        if (otp !== verification.otp) {
+          throw new BadRequestException(MESSAGES.ERROR.AUTH.INVALID_OTP);
+        }
+
+        await this.phoneVerificationRepository.markAsVerified(verification.id);
+      }
+    }
+
+    // Update last login
+    await this.userRepository.updateLastLogin(user.id, ipAddress);
+
+    // Generate tokens
+    const tokens = await this.generateTokens(user, ipAddress, userAgent);
+
+    this.logger.log(
+      `User logged in via OTP: ${email || phone}`,
+      'AuthService',
+    );
+
+    return {
+      ...tokens,
+      user: {
+        id: user.id,
+        email: user.email,
+        phone: user.phone,
+        email_verified: user.email_verified,
+        phone_verified: user.phone_verified,
+        onboarding_completed: user.onboarding_completed,
+        profile_completion_percentage: user.profile_completion_percentage,
+      },
+    };
+  }
+
+  // Multi-Step Registration Methods
+  async registerInit(email: string, phone: string): Promise<{ tempUserId: string }> {
+    // Check if user already exists
+    const existingUserByEmail = await this.userRepository.findByEmail(email);
+    if (existingUserByEmail) {
+      throw new ConflictException('Email already registered');
+    }
+
+    const formattedPhone = phone.startsWith('+') ? phone : `+91${phone}`;
+    const existingUserByPhone = await this.userRepository.findByPhone(formattedPhone);
+    if (existingUserByPhone) {
+      throw new ConflictException('Phone number already registered');
+    }
+
+    const nodeEnv = this.configService.get<string>('NODE_ENV');
+    const emailOtp = nodeEnv === 'production' ? this.generateOTP() : this.UAT_OTP;
+    const phoneOtp = nodeEnv === 'production' ? this.generateOTP() : this.UAT_OTP;
+
+    const otpExpiresAt = new Date();
+    otpExpiresAt.setMinutes(otpExpiresAt.getMinutes() + this.OTP_EXPIRY_MINUTES);
+
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 1); // Temp registration expires in 1 hour
+
+    // Create temp registration
+    const tempReg = await this.tempRegistrationRepository.createTempRegistration({
+      email,
+      phone: formattedPhone,
+      email_otp: emailOtp,
+      phone_otp: phoneOtp,
+      otp_expires_at: otpExpiresAt,
+      expires_at: expiresAt,
+    });
+
+    // Send OTPs
+    await this.emailService.sendVerificationEmail(email, emailOtp);
+    await this.smsService.sendOTP(formattedPhone, phoneOtp);
+
+    this.logger.log(
+      `Registration initiated for ${email}${nodeEnv !== 'production' ? ' [TEST MODE - OTP: 123456]' : ''}`,
+      'AuthService',
+    );
+
+    return { tempUserId: tempReg.id };
+  }
+
+  async verifyEmailRegistration(tempUserId: string, emailOtp: string): Promise<void> {
+    const tempReg = await this.tempRegistrationRepository.findById(tempUserId);
+
+    if (!tempReg) {
+      throw new NotFoundException('Registration session not found');
+    }
+
+    if (new Date() > tempReg.expires_at) {
+      await this.tempRegistrationRepository.deleteById(tempUserId);
+      throw new BadRequestException('Registration session expired. Please start again.');
+    }
+
+    if (new Date() > tempReg.otp_expires_at) {
+      throw new BadRequestException('OTP expired. Please request a new one.');
+    }
+
+    const nodeEnv = this.configService.get<string>('NODE_ENV');
+    const validOtp = nodeEnv === 'production' ? tempReg.email_otp : this.UAT_OTP;
+
+    if (emailOtp !== validOtp) {
+      throw new BadRequestException('Invalid OTP');
+    }
+
+    await this.tempRegistrationRepository.markEmailVerified(tempUserId);
+
+    this.logger.log(`Email verified for temp registration: ${tempUserId}`, 'AuthService');
+  }
+
+  async verifyPhoneRegistration(tempUserId: string, phoneOtp: string): Promise<void> {
+    const tempReg = await this.tempRegistrationRepository.findById(tempUserId);
+
+    if (!tempReg) {
+      throw new NotFoundException('Registration session not found');
+    }
+
+    if (!tempReg.email_verified) {
+      throw new BadRequestException('Please verify email first');
+    }
+
+    if (new Date() > tempReg.expires_at) {
+      await this.tempRegistrationRepository.deleteById(tempUserId);
+      throw new BadRequestException('Registration session expired. Please start again.');
+    }
+
+    if (new Date() > tempReg.otp_expires_at) {
+      throw new BadRequestException('OTP expired. Please request a new one.');
+    }
+
+    const nodeEnv = this.configService.get<string>('NODE_ENV');
+    const validOtp = nodeEnv === 'production' ? tempReg.phone_otp : this.UAT_OTP;
+
+    if (phoneOtp !== validOtp) {
+      throw new BadRequestException('Invalid OTP');
+    }
+
+    await this.tempRegistrationRepository.markPhoneVerified(tempUserId);
+
+    this.logger.log(`Phone verified for temp registration: ${tempUserId}`, 'AuthService');
+  }
+
+  async completeRegistration(
+    tempUserId: string,
+    password: string,
+    profileFor: string,
+    createdBy: string,
+    ipAddress: string,
+    userAgent: string,
+  ): Promise<{
+    accessToken: string;
+    refreshToken: string;
+    user: Partial<User>;
+  }> {
+    const tempReg = await this.tempRegistrationRepository.findById(tempUserId);
+
+    if (!tempReg) {
+      throw new NotFoundException('Registration session not found');
+    }
+
+    if (!tempReg.email_verified || !tempReg.phone_verified) {
+      throw new BadRequestException('Please complete email and phone verification first');
+    }
+
+    if (new Date() > tempReg.expires_at) {
+      await this.tempRegistrationRepository.deleteById(tempUserId);
+      throw new BadRequestException('Registration session expired. Please start again.');
+    }
+
+    // Create user account
+    const hashedPassword = await bcrypt.hash(password, this.SALT_ROUNDS);
+
+    const user = await this.userRepository.create({
+      email: tempReg.email,
+      phone: tempReg.phone,
+      password_hash: hashedPassword,
+      email_verified: true,
+      phone_verified: true,
+      profile_for: profileFor,
+      created_by: createdBy,
+    });
+
+    // Delete temp registration
+    await this.tempRegistrationRepository.deleteById(tempUserId);
+
+    // Generate tokens and create session
+    const tokens = await this.generateTokens(user, ipAddress, userAgent);
+
+    this.logger.log(`Registration completed for user: ${user.email}`, 'AuthService');
+
+    return {
+      ...tokens,
+      user: {
+        id: user.id,
+        email: user.email,
+        phone: user.phone,
+        email_verified: user.email_verified,
+        phone_verified: user.phone_verified,
+        onboarding_completed: user.onboarding_completed,
+        profile_completion_percentage: user.profile_completion_percentage,
+      },
+    };
   }
 }

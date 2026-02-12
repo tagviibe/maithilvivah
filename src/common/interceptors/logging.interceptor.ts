@@ -21,7 +21,7 @@ export class LoggingInterceptor implements NestInterceptor {
     const now = Date.now();
 
     this.logger.log(
-      `Incoming Request: ${method} ${url} - User: ${user?.id || 'Anonymous'} - IP: ${ip}`,
+      `Incoming Request: ${method} ${url} - User: ${user?.userId || user?.id || 'Anonymous'} - IP: ${ip}`,
     );
 
     return next.handle().pipe(

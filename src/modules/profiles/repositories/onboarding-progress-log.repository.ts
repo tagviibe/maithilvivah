@@ -23,14 +23,10 @@ export class OnboardingProgressLogRepository extends BaseRepository<OnboardingPr
   ): Promise<void> {
     const startTime = Date.now();
 
-    const log = this.repository.create({
-      user_id: userId,
-      section_name: sectionName,
-      action,
-      completion_percentage: completionPercentage,
-    });
-
-    await this.repository.save(log);
+    await this.repository.query(
+      `INSERT INTO onboarding_progress_logs (user_id, section_name, action, completion_percentage) VALUES ($1, $2, $3, $4)`,
+      [userId, sectionName, action, completionPercentage],
+    );
 
     this.logger.logDatabaseQuery(
       `INSERT INTO onboarding_progress_logs (user_id, section_name, action, completion_percentage) VALUES ($1, $2, $3, $4)`,
