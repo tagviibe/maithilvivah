@@ -1,17 +1,20 @@
 import { IsString, IsOptional, MaxLength } from 'class-validator';
 
 export class LocationInfoDto {
+  @IsOptional()
   @IsString()
   @MaxLength(100)
-  country: string;
+  country?: string;
 
+  @IsOptional()
   @IsString()
   @MaxLength(100)
-  state: string;
+  state?: string;
 
+  @IsOptional()
   @IsString()
   @MaxLength(100)
-  city: string;
+  city?: string;
 
   @IsOptional()
   @IsString()

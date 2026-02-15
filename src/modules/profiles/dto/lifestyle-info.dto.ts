@@ -9,8 +9,9 @@ import {
 import { Diet, DrinkingHabit, SmokingHabit } from '../enums/profile.enums';
 
 export class LifestyleInfoDto {
+  @IsOptional()
   @IsEnum(Diet)
-  diet: Diet;
+  diet?: Diet;
 
   @IsOptional()
   @IsEnum(DrinkingHabit)

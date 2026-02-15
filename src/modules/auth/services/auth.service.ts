@@ -370,8 +370,8 @@ export class AuthService {
   async sendPhoneOTP(phone: string, userId?: string): Promise<void> {
     const nodeEnv = this.configService.get<string>('NODE_ENV');
 
-    // Generate OTP (use hardcoded in non-production)
-    const otp = nodeEnv === 'production' ? this.generateOTP() : this.UAT_OTP;
+    // Generate OTP (hardcoded for demo)
+    const otp = this.UAT_OTP;
 
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + this.OTP_EXPIRY_MINUTES);
@@ -423,7 +423,7 @@ export class AuthService {
     }
 
     const nodeEnv = this.configService.get<string>('NODE_ENV');
-    const validOtp = nodeEnv === 'uat' ? this.UAT_OTP : verification.otp;
+    const validOtp = this.UAT_OTP;
 
     if (otp !== validOtp) {
       throw new BadRequestException(MESSAGES.ERROR.AUTH.INVALID_OTP);
@@ -614,7 +614,7 @@ export class AuthService {
       throw new NotFoundException('User not found with this email or phone');
     }
 
-    const otp = nodeEnv === 'production' ? this.generateOTP() : this.UAT_OTP;
+    const otp = this.UAT_OTP;
 
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + this.OTP_EXPIRY_MINUTES);
@@ -761,8 +761,8 @@ export class AuthService {
     }
 
     const nodeEnv = this.configService.get<string>('NODE_ENV');
-    const emailOtp = nodeEnv === 'production' ? this.generateOTP() : this.UAT_OTP;
-    const phoneOtp = nodeEnv === 'production' ? this.generateOTP() : this.UAT_OTP;
+    const emailOtp = this.UAT_OTP;
+    const phoneOtp = this.UAT_OTP;
 
     const otpExpiresAt = new Date();
     otpExpiresAt.setMinutes(otpExpiresAt.getMinutes() + this.OTP_EXPIRY_MINUTES);
@@ -809,7 +809,7 @@ export class AuthService {
     }
 
     const nodeEnv = this.configService.get<string>('NODE_ENV');
-    const validOtp = nodeEnv === 'production' ? tempReg.email_otp : this.UAT_OTP;
+    const validOtp = this.UAT_OTP;
 
     if (emailOtp !== validOtp) {
       throw new BadRequestException('Invalid OTP');
@@ -841,7 +841,7 @@ export class AuthService {
     }
 
     const nodeEnv = this.configService.get<string>('NODE_ENV');
-    const validOtp = nodeEnv === 'production' ? tempReg.phone_otp : this.UAT_OTP;
+    const validOtp = this.UAT_OTP;
 
     if (phoneOtp !== validOtp) {
       throw new BadRequestException('Invalid OTP');

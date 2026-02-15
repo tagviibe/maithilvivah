@@ -20,25 +20,29 @@ import {
 } from '../enums/profile.enums';
 
 export class PartnerPreferencesDto {
+  @IsOptional()
   @IsInt()
   @Min(18)
   @Max(100)
-  age_min: number;
+  age_min?: number;
 
+  @IsOptional()
   @IsInt()
   @Min(18)
   @Max(100)
-  age_max: number;
+  age_max?: number;
 
+  @IsOptional()
   @IsInt()
   @Min(120)
   @Max(250)
-  height_min_cm: number;
+  height_min_cm?: number;
 
+  @IsOptional()
   @IsInt()
   @Min(120)
   @Max(250)
-  height_max_cm: number;
+  height_max_cm?: number;
 
   @IsOptional()
   @IsArray()

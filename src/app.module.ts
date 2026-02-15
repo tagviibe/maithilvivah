@@ -9,6 +9,8 @@ import { QueueModule } from './infrastructure/queue/queue.module';
 import { LoggerModule } from './common/services/logger.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ProfilesModule } from './modules/profiles/profiles.module';
+import { MatchingModule } from './modules/matching/matching.module';
+import { ChatModule } from './modules/chat/chat.module';
 
 @Module({
   imports: [
@@ -50,8 +52,10 @@ import { ProfilesModule } from './modules/profiles/profiles.module';
     // Application modules
     AuthModule,
     ProfilesModule,
+    MatchingModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }
