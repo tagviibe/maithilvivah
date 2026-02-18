@@ -19,6 +19,9 @@ import { OnboardingProgressLogRepository } from './repositories/onboarding-progr
 import { UserRepository } from '../auth/repositories/user.repository';
 import { User } from '../auth/entities/user.entity';
 
+// Import StorageService
+import { StorageService } from '@/common/services/storage.service';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -37,7 +40,8 @@ import { User } from '../auth/entities/user.entity';
     ProfilePhotoRepository,
     OnboardingProgressLogRepository,
     UserRepository,
+    StorageService,
   ],
   exports: [ProfilesService],
 })
-export class ProfilesModule {}
+export class ProfilesModule { }

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ProfileRepository } from '@/modules/profiles/repositories/profile.repository';
 import { PartnerPreferencesRepository } from '@/modules/profiles/repositories/partner-preferences.repository';
 import { ProfilePhotoRepository } from '@/modules/profiles/repositories/profile-photo.repository';
@@ -628,5 +628,35 @@ export class ProfilesService {
         );
 
         return { message: 'Onboarding completed successfully' };
+    }
+
+    // ==================== HOROSCOPE DOCUMENT ====================
+    async updateHoroscope(userId: string, horoscopeUrl: string | null) {
+        const profile = await this.profileRepository.findByUserId(userId);
+        if (!profile) {
+            throw new NotFoundException('Profile not found');
+        }
+
+        await this.profileRepository.update(profile.id, {
+            horoscope_url: horoscopeUrl || undefined,
+        });
+
+        this.logger.log(
+            `Horoscope ${horoscopeUrl ? 'uploaded' : 'deleted'} for user: ${userId}`,
+            'ProfilesService',
+        );
+
+        return { horoscope_url: horoscopeUrl };
+    }
+
+    async getHoroscope(userId: string) {
+        const profile = await this.profileRepository.findByUserId(userId);
+        if (!profile) {
+            throw new NotFoundException('Profile not found');
+        }
+
+        return {
+            horoscope_url: profile.horoscope_url,
+        };
     }
 }

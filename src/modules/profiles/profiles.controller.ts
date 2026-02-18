@@ -1,4 +1,5 @@
-import { Controller, Get, Patch, Body, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, UseGuards, Req, UseInterceptors, UploadedFile, Delete } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
@@ -7,6 +8,7 @@ import {
 } from '@nestjs/swagger';
 import { ProfilesService } from './profiles.service';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
+import { StorageService } from '@/common/services/storage.service';
 import { BasicInfoDto } from '@/modules/profiles/dto/basic-info.dto';
 import { CommunityInfoDto } from '@/modules/profiles/dto/community-info.dto';
 import { LocationInfoDto } from '@/modules/profiles/dto/location-info.dto';
@@ -23,7 +25,10 @@ import * as requestType from '@/common/types/request.type';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class ProfilesController {
-  constructor(private readonly profilesService: ProfilesService) { }
+  constructor(
+    private readonly profilesService: ProfilesService,
+    private readonly storageService: StorageService,
+  ) { }
 
   // ==================== PROFILE FOR ====================
   @Patch(API_ROUTES.PROFILES.PROFILE_FOR)
@@ -347,6 +352,206 @@ export class ProfilesController {
     return {
       success: true,
       data,
+    };
+  }
+
+  // ==================== HOROSCOPE DOCUMENT ====================
+  @Post('documents/horoscope')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Upload horoscope PDF to Cloudflare R2' })
+  @ApiResponse({
+    status: 200,
+    description: 'Horoscope uploaded successfully',
+  })
+  async uploadHoroscope(
+    @Req() req: requestType.AuthenticatedRequest,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const userId = req.user.userId;
+
+    // Validate file
+    if (!file) {
+      return {
+        success: false,
+        message: 'No file uploaded',
+      };
+    }
+
+    if (file.mimetype !== 'application/pdf') {
+      return {
+        success: false,
+        message: 'Only PDF files are allowed',
+      };
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      return {
+        success: false,
+        message: 'File size should be less than 5MB',
+      };
+    }
+
+    // Get profile to use profileId for folder structure
+    const profile = await this.profilesService.getHoroscope(userId);
+    const profileId = profile.horoscope_url ? profile.horoscope_url.split('/')[0] : userId;
+
+    // Upload to Cloudflare R2 with folder structure: profileId/docs/
+    const fileUrl = await this.storageService.uploadFile(
+      file.buffer,
+      profileId,
+      'docs',
+      file.originalname,
+    );
+
+    await this.profilesService.updateHoroscope(userId, fileUrl);
+
+    return {
+      success: true,
+      message: 'Horoscope uploaded successfully to R2',
+      data: {
+        url: fileUrl,
+        filename: file.originalname,
+        size: file.size,
+      },
+    };
+  }
+
+  @Get('documents/horoscope')
+  @ApiOperation({ summary: 'Get horoscope PDF URL' })
+  @ApiResponse({
+    status: 200,
+    description: 'Horoscope URL retrieved successfully',
+  })
+  async getHoroscope(@Req() req: requestType.AuthenticatedRequest) {
+    const userId = req.user.userId;
+    const data = await this.profilesService.getHoroscope(userId);
+
+    if (!data.horoscope_url) {
+      return {
+        success: false,
+        message: 'No horoscope uploaded',
+        data: null,
+      };
+    }
+
+    return {
+      success: true,
+      data: {
+        url: data.horoscope_url,
+      },
+    };
+  }
+
+  @Delete('documents/horoscope')
+  @ApiOperation({ summary: 'Delete horoscope PDF from R2' })
+  @ApiResponse({
+    status: 200,
+    description: 'Horoscope deleted successfully',
+  })
+  async deleteHoroscope(@Req() req: requestType.AuthenticatedRequest) {
+    const userId = req.user.userId;
+
+    // Get current horoscope URL
+    const profile = await this.profilesService.getHoroscope(userId);
+
+    if (profile.horoscope_url) {
+      // Delete from Cloudflare R2
+      await this.storageService.deleteFile(profile.horoscope_url);
+    }
+
+    await this.profilesService.updateHoroscope(userId, null);
+
+    return {
+      success: true,
+      message: 'Horoscope deleted successfully from R2',
+    };
+  }
+
+  // ==================== PROFILE PHOTOS ====================
+  @Post('photos/upload')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Upload profile photo to Cloudflare R2' })
+  @ApiResponse({
+    status: 200,
+    description: 'Photo uploaded successfully',
+  })
+  async uploadPhoto(
+    @Req() req: requestType.AuthenticatedRequest,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const userId = req.user.userId;
+
+    // Validate file
+    if (!file) {
+      return {
+        success: false,
+        message: 'No file uploaded',
+      };
+    }
+
+    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      return {
+        success: false,
+        message: 'Only JPEG, PNG, and WebP images are allowed',
+      };
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      return {
+        success: false,
+        message: 'File size should be less than 10MB',
+      };
+    }
+
+    // Get profile to use profileId for folder structure
+    const profile = await this.profilesService.getCompleteProfile(userId);
+    const profileId = profile.profile?.id || userId;
+
+    // Upload to Cloudflare R2 with folder structure: profileId/images/
+    const photoUrl = await this.storageService.uploadFile(
+      file.buffer,
+      profileId,
+      'images',
+      file.originalname,
+    );
+
+    return {
+      success: true,
+      message: 'Photo uploaded successfully to R2',
+      data: {
+        url: photoUrl,
+        filename: file.originalname,
+        size: file.size,
+      },
+    };
+  }
+
+  @Delete('photos/:photoUrl')
+  @ApiOperation({ summary: 'Delete profile photo from R2' })
+  @ApiResponse({
+    status: 200,
+    description: 'Photo deleted successfully',
+  })
+  async deletePhoto(
+    @Req() req: requestType.AuthenticatedRequest,
+    @Body() body: { photoUrl: string },
+  ) {
+    const userId = req.user.userId;
+
+    if (!body.photoUrl) {
+      return {
+        success: false,
+        message: 'Photo URL is required',
+      };
+    }
+
+    // Delete from Cloudflare R2
+    await this.storageService.deleteFile(body.photoUrl);
+
+    return {
+      success: true,
+      message: 'Photo deleted successfully from R2',
     };
   }
 }
