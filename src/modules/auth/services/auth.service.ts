@@ -48,7 +48,13 @@ export class AuthService {
 
   async register(
     registerDto: RegisterDto,
-  ): Promise<{ userId: string; email: string }> {
+    ipAddress: string,
+    userAgent: string,
+  ): Promise<{
+    accessToken: string;
+    refreshToken: string;
+    user: Partial<User>;
+  }> {
     const { email, phone, password, profileFor, createdBy } = registerDto;
 
     const existingUser = await this.userRepository.findByEmail(email);
@@ -98,11 +104,22 @@ export class AuthService {
 
     await this.emailService.sendVerificationEmail(email, verificationToken);
 
+    // Generate tokens and create session for auto-login
+    const tokens = await this.generateTokens(user, ipAddress, userAgent);
+
     this.logger.log(`User registered successfully: ${email}`, 'AuthService');
 
     return {
-      userId: user.id,
-      email: user.email,
+      ...tokens,
+      user: {
+        id: user.id,
+        email: user.email,
+        phone: user.phone,
+        email_verified: user.email_verified,
+        phone_verified: user.phone_verified,
+        onboarding_completed: user.onboarding_completed,
+        profile_completion_percentage: user.profile_completion_percentage,
+      },
     };
   }
 

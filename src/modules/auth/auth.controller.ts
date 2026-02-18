@@ -49,8 +49,12 @@ export class AuthController {
     status: 409,
     description: 'Email or phone already exists',
   })
-  async register(@Body() registerDto: RegisterDto) {
-    const result = await this.authService.register(registerDto);
+  async register(
+    @Body() registerDto: RegisterDto,
+    @Ip() ipAddress: string,
+    @Headers('user-agent') userAgent: string,
+  ) {
+    const result = await this.authService.register(registerDto, ipAddress, userAgent);
     return {
       success: true,
       message: MESSAGES.SUCCESS.AUTH.REGISTRATION_SUCCESS,
