@@ -200,14 +200,11 @@ export class Profile {
   @Column({ type: 'text', nullable: true })
   special_cases: string;
 
-  // Documents
-  @Column({ type: 'varchar', length: 500, nullable: true })
-  horoscope_url: string;
-
-  // Metadata
+  // Verification
   @Column({ type: 'boolean', default: false })
   is_verified: boolean;
 
+  // Metadata
   @Column({ type: 'boolean', default: false })
   is_featured: boolean;
 

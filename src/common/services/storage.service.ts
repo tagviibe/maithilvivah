@@ -22,7 +22,11 @@ export class StorageService {
         const secretAccessKey = this.configService.get<string>('R2_SECRET_ACCESS_KEY');
 
         if (!accountId || !accessKeyId || !secretAccessKey) {
-            throw new Error('R2 credentials are not configured properly');
+            this.logger.warn('R2 credentials are not configured - file uploads will be disabled');
+            this.bucketName = '';
+            this.publicUrl = '';
+            this.s3Client = null as any;
+            return;
         }
 
         this.bucketName = this.configService.get<string>('R2_BUCKET_NAME') || 'maithilvivah';

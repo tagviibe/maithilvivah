@@ -24,7 +24,7 @@ export class MatchingEngineService {
     private preferencesRepository: Repository<PartnerPreferences>,
     private compatibilityService: CompatibilityService,
     private matchRepository: MatchRepository,
-  ) {}
+  ) { }
 
   /**
    * Run Gale-Shapley inspired matching for a single user.
@@ -331,12 +331,13 @@ export class MatchingEngineService {
     const matches = await this.matchRepository.findByUserId(userId, limit, offset);
     const total = await this.matchRepository.countByUserId(userId);
 
-    // Load profiles for matched users
+    // Load profiles with user relation for email/phone
     const matchedUserIds = matches.map(m => m.matched_user_id);
     const profiles = matchedUserIds.length > 0
       ? await this.profileRepository.find({
-          where: { user_id: In(matchedUserIds) },
-        })
+        where: { user_id: In(matchedUserIds) },
+        relations: ['user'],
+      })
       : [];
     const profileMap = new Map<string, Profile>();
     profiles.forEach(p => profileMap.set(p.user_id, p));
@@ -366,6 +367,10 @@ export class MatchingEngineService {
           about_me: profile.about_me,
           diet: profile.diet,
           manglik: profile.manglik,
+          is_verified: profile.is_verified,
+          email: profile.user?.email || null,
+          phone: profile.user?.phone || null,
+          last_login_at: profile.user?.last_login_at || null,
         } : {},
       };
     });

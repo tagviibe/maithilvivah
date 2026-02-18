@@ -27,6 +27,7 @@ import { MatchingEngineService } from './services/matching-engine.service';
 import { MatchRepository } from './repositories/match.repository';
 import { InterestRepository } from './repositories/interest.repository';
 import { ShortlistRepository } from './repositories/shortlist.repository';
+import { ProfileViewRepository } from './repositories/profile-view.repository';
 import { MatchStatus } from './entities/match.entity';
 import { InterestStatus } from './entities/interest.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -43,6 +44,7 @@ export class MatchingController {
     private readonly matchRepository: MatchRepository,
     private readonly interestRepository: InterestRepository,
     private readonly shortlistRepository: ShortlistRepository,
+    private readonly profileViewRepository: ProfileViewRepository,
     @InjectRepository(Profile)
     private readonly profileRepository: Repository<Profile>,
   ) { }
@@ -51,17 +53,30 @@ export class MatchingController {
     'user_id', 'first_name', 'last_name', 'date_of_birth', 'gender',
     'height_cm', 'religion', 'caste', 'mother_tongue', 'highest_education',
     'occupation', 'annual_income', 'country', 'state', 'city', 'about_me',
-    'diet', 'manglik',
+    'diet', 'manglik', 'is_verified',
   ] as (keyof Profile)[];
 
-  private async enrichWithProfiles(userIds: string[]): Promise<Map<string, Partial<Profile>>> {
+  private async enrichWithProfiles(userIds: string[]): Promise<Map<string, any>> {
     if (!userIds.length) return new Map();
-    const profiles = await this.profileRepository.find({
-      where: { user_id: In(userIds) },
-      select: this.profileSelect,
+    const selectCols = this.profileSelect.map(k => `p.${k}`);
+    const rows = await this.profileRepository
+      .createQueryBuilder('p')
+      .select(selectCols)
+      .leftJoin('p.user', 'u')
+      .addSelect(['u.email', 'u.phone', 'u.last_login_at'])
+      .where('p.user_id IN (:...userIds)', { userIds })
+      .getMany();
+    const map = new Map<string, any>();
+    rows.forEach(p => {
+      const data: any = {};
+      for (const key of this.profileSelect) {
+        data[key] = (p as any)[key] ?? null;
+      }
+      data.email = p.user?.email || null;
+      data.phone = p.user?.phone || null;
+      data.last_login_at = p.user?.last_login_at || null;
+      map.set(p.user_id, data);
     });
-    const map = new Map<string, Partial<Profile>>();
-    profiles.forEach(p => map.set(p.user_id, p));
     return map;
   }
 
@@ -387,6 +402,102 @@ export class MatchingController {
       success: true,
       message: `Generated ${count} matches`,
       data: { matchCount: count },
+    };
+  }
+
+  // ==================== PROFILE VIEWS ====================
+  @Post('views/record')
+  @ApiOperation({ summary: 'Record a profile view' })
+  async recordProfileView(
+    @Req() req: requestType.AuthenticatedRequest,
+    @Body() body: { viewedUserId: string },
+  ) {
+    const userId = req.user.userId;
+    if (!body.viewedUserId) {
+      throw new BadRequestException('viewedUserId is required');
+    }
+    if (body.viewedUserId === userId) {
+      return { success: true, message: 'Self-view not recorded' };
+    }
+
+    await this.profileViewRepository.recordView(userId, body.viewedUserId);
+    return {
+      success: true,
+      message: 'Profile view recorded',
+    };
+  }
+
+  @Get('views/who-viewed-me')
+  @ApiOperation({ summary: 'Get profiles that viewed the current user' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  async getWhoViewedMe(
+    @Req() req: requestType.AuthenticatedRequest,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const userId = req.user.userId;
+    const p = parseInt(page || '1', 10);
+    const l = Math.min(parseInt(limit || '20', 10), 50);
+    const offset = (p - 1) * l;
+
+    const viewers = await this.profileViewRepository.getViewersOfProfile(userId, l, offset);
+    const total = await this.profileViewRepository.countUniqueViewers(userId);
+    const viewerIds = viewers.map(v => v.viewerId);
+    const profileMap = await this.enrichWithProfiles(viewerIds);
+
+    const items = viewers.map(v => ({
+      userId: v.viewerId,
+      viewedAt: v.lastViewedAt,
+      profile: profileMap.get(v.viewerId) || null,
+    }));
+
+    return {
+      success: true,
+      data: { items, total, page: p, totalPages: Math.ceil(total / l) },
+    };
+  }
+
+  @Get('views/i-viewed')
+  @ApiOperation({ summary: 'Get profiles the current user has viewed' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  async getProfilesIViewed(
+    @Req() req: requestType.AuthenticatedRequest,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const userId = req.user.userId;
+    const p = parseInt(page || '1', 10);
+    const l = Math.min(parseInt(limit || '20', 10), 50);
+    const offset = (p - 1) * l;
+
+    const viewed = await this.profileViewRepository.getViewedByUser(userId, l, offset);
+    const total = await this.profileViewRepository.countViewedByUser(userId);
+    const viewedIds = viewed.map(v => v.viewedId);
+    const profileMap = await this.enrichWithProfiles(viewedIds);
+
+    const items = viewed.map(v => ({
+      userId: v.viewedId,
+      viewedAt: v.lastViewedAt,
+      profile: profileMap.get(v.viewedId) || null,
+    }));
+
+    return {
+      success: true,
+      data: { items, total, page: p, totalPages: Math.ceil(total / l) },
+    };
+  }
+
+  @Get('views/count')
+  @ApiOperation({ summary: 'Get total view count for current user profile' })
+  async getViewCount(@Req() req: requestType.AuthenticatedRequest) {
+    const userId = req.user.userId;
+    const totalViews = await this.profileViewRepository.getTotalViewCount(userId);
+    const uniqueViewers = await this.profileViewRepository.countUniqueViewers(userId);
+    return {
+      success: true,
+      data: { totalViews, uniqueViewers },
     };
   }
 }

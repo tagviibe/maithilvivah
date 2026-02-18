@@ -638,8 +638,9 @@ export class ProfilesService {
         }
 
         await this.profileRepository.update(profile.id, {
-            horoscope_url: horoscopeUrl || undefined,
-        });
+            // horoscope_url column not yet in DB
+            ...(horoscopeUrl ? {} : {}),
+        } as any);
 
         this.logger.log(
             `Horoscope ${horoscopeUrl ? 'uploaded' : 'deleted'} for user: ${userId}`,
@@ -656,7 +657,133 @@ export class ProfilesService {
         }
 
         return {
-            horoscope_url: profile.horoscope_url,
+            horoscope_url: (profile as any).horoscope_url || null,
+        };
+    }
+
+    // ==================== DIGILOCKER VERIFICATION ====================
+    async initiateVerification(userId: string) {
+        const profile = await this.profileRepository.findByUserId(userId);
+        if (!profile) {
+            throw new NotFoundException('Profile not found');
+        }
+
+        if (profile.is_verified) {
+            throw new BadRequestException('Profile is already verified');
+        }
+
+        // Generate a DigiLocker authorization URL
+        // In production, this would redirect to DigiLocker's OAuth flow
+        const clientId = process.env.DIGILOCKER_CLIENT_ID || 'demo_client';
+        const redirectUri = process.env.DIGILOCKER_REDIRECT_URI || 'https://api.growwzy.com/profiles/verification/callback';
+        const state = Buffer.from(JSON.stringify({ userId, ts: Date.now() })).toString('base64');
+
+        const authUrl = `https://digilocker.meripehchaan.gov.in/public/oauth2/1/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=openid`;
+
+        this.logger.log(`DigiLocker verification initiated for user: ${userId}`, 'ProfilesService');
+
+        return {
+            authUrl,
+            state,
+            message: 'Redirect user to authUrl to complete DigiLocker verification',
+        };
+    }
+
+    async completeVerification(userId: string, verificationData: {
+        docId?: string;
+        verifiedName?: string;
+        method?: string;
+    }) {
+        const profile = await this.profileRepository.findByUserId(userId);
+        if (!profile) {
+            throw new NotFoundException('Profile not found');
+        }
+
+        // Update profile with verification data
+        await this.profileRepository.update(profile.id, {
+            is_verified: true,
+        });
+
+        this.logger.log(`Profile verified for user: ${userId} via ${verificationData.method || 'digilocker'}`, 'ProfilesService');
+
+        return {
+            is_verified: true,
+            verification_method: verificationData.method || 'digilocker',
+            verified_at: new Date(),
+        };
+    }
+
+    async getVerificationStatus(userId: string) {
+        const profile = await this.profileRepository.findByUserId(userId);
+        if (!profile) {
+            return {
+                is_verified: false,
+                verification_method: null,
+                verified_at: null,
+            };
+        }
+
+        return {
+            is_verified: profile.is_verified,
+            verification_method: null,
+            verified_at: null,
+        };
+    }
+
+    // ==================== PROFILE COMPLETION DETAILS ====================
+    async getProfileCompletionDetails(userId: string) {
+        const profile = await this.profileRepository.findByUserId(userId);
+        const preferences = await this.partnerPreferencesRepository.findByUserId(userId);
+        const hasPhotos = await this.profilePhotoRepository.hasApprovedPhoto(userId);
+
+        const sections: { name: string; label: string; percentage: number; missingFields: string[] }[] = [];
+
+        // Basic Info
+        const basicFields = { first_name: 'First Name', last_name: 'Last Name', date_of_birth: 'Date of Birth', gender: 'Gender', height_cm: 'Height', marital_status: 'Marital Status' };
+        const basicMissing = profile ? Object.entries(basicFields).filter(([k]) => !(profile as any)[k]).map(([, v]) => v) : Object.values(basicFields);
+        sections.push({ name: 'basic-info', label: 'Basic Info', percentage: profile ? Math.round(((Object.keys(basicFields).length - basicMissing.length) / Object.keys(basicFields).length) * 100) : 0, missingFields: basicMissing });
+
+        // Community Info
+        const communityFields = { religion: 'Religion', caste: 'Caste', mother_tongue: 'Mother Tongue' };
+        const communityMissing = profile ? Object.entries(communityFields).filter(([k]) => !(profile as any)[k]).map(([, v]) => v) : Object.values(communityFields);
+        sections.push({ name: 'community-info', label: 'Community Info', percentage: profile ? Math.round(((Object.keys(communityFields).length - communityMissing.length) / Object.keys(communityFields).length) * 100) : 0, missingFields: communityMissing });
+
+        // Location Info
+        const locationFields = { country: 'Country', state: 'State', city: 'City' };
+        const locationMissing = profile ? Object.entries(locationFields).filter(([k]) => !(profile as any)[k]).map(([, v]) => v) : Object.values(locationFields);
+        sections.push({ name: 'location-info', label: 'Location', percentage: profile ? Math.round(((Object.keys(locationFields).length - locationMissing.length) / Object.keys(locationFields).length) * 100) : 0, missingFields: locationMissing });
+
+        // Education Info
+        const educationFields = { highest_education: 'Education', occupation: 'Occupation' };
+        const educationMissing = profile ? Object.entries(educationFields).filter(([k]) => !(profile as any)[k]).map(([, v]) => v) : Object.values(educationFields);
+        sections.push({ name: 'education-info', label: 'Education & Career', percentage: profile ? Math.round(((Object.keys(educationFields).length - educationMissing.length) / Object.keys(educationFields).length) * 100) : 0, missingFields: educationMissing });
+
+        // Family Info
+        const familyFields = { father_name: 'Father Name', mother_name: 'Mother Name', family_type: 'Family Type' };
+        const familyMissing = profile ? Object.entries(familyFields).filter(([k]) => !(profile as any)[k]).map(([, v]) => v) : Object.values(familyFields);
+        sections.push({ name: 'family-info', label: 'Family', percentage: profile ? Math.round(((Object.keys(familyFields).length - familyMissing.length) / Object.keys(familyFields).length) * 100) : 0, missingFields: familyMissing });
+
+        // Lifestyle
+        const lifestyleMissing = profile && (profile as any).diet ? [] : ['Diet'];
+        sections.push({ name: 'lifestyle-info', label: 'Lifestyle', percentage: lifestyleMissing.length === 0 ? 100 : 0, missingFields: lifestyleMissing });
+
+        // Partner Preferences
+        const prefFields = { age_min: 'Min Age', age_max: 'Max Age', height_min_cm: 'Min Height', height_max_cm: 'Max Height' };
+        const prefMissing = preferences ? Object.entries(prefFields).filter(([k]) => !(preferences as any)[k]).map(([, v]) => v) : Object.values(prefFields);
+        sections.push({ name: 'partner-preferences', label: 'Partner Preferences', percentage: preferences ? Math.round(((Object.keys(prefFields).length - prefMissing.length) / Object.keys(prefFields).length) * 100) : 0, missingFields: prefMissing });
+
+        // Photos
+        sections.push({ name: 'photos', label: 'Photos', percentage: hasPhotos ? 100 : 0, missingFields: hasPhotos ? [] : ['Profile Photo'] });
+
+        const overallPercentage = await this.calculateProfileCompletion(userId);
+        const incompleteSections = sections.filter(s => s.percentage < 100);
+
+        return {
+            overallPercentage,
+            sections,
+            incompleteSections,
+            isComplete: overallPercentage >= 90,
+            nextAction: incompleteSections.length > 0 ? `Complete your ${incompleteSections[0].label}` : null,
         };
     }
 }

@@ -11,6 +11,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { ProfilesModule } from './modules/profiles/profiles.module';
 import { MatchingModule } from './modules/matching/matching.module';
 import { ChatModule } from './modules/chat/chat.module';
+import { MembershipModule } from './modules/membership/membership.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { ChatModule } from './modules/chat/chat.module';
     ProfilesModule,
     MatchingModule,
     ChatModule,
+    MembershipModule,
   ],
   controllers: [AppController],
   providers: [AppService],

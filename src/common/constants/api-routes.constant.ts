@@ -74,6 +74,12 @@ export const API_ROUTES = {
     REMOVE: 'remove',
     LIST: 'list',
   },
+  VIEWS: {
+    RECORD: 'views/record',
+    WHO_VIEWED_ME: 'views/who-viewed-me',
+    PROFILES_I_VIEWED: 'views/i-viewed',
+    VIEW_COUNT: 'views/count',
+  },
   CHAT: {
     BASE: 'chat',
     CONVERSATIONS: 'conversations',

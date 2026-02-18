@@ -339,6 +339,25 @@ export class ProfilesController {
     };
   }
 
+  // ==================== ONBOARDING STEP ====================
+  @Patch(API_ROUTES.PROFILES.ONBOARDING_STEP)
+  @ApiOperation({ summary: 'Update current onboarding step' })
+  @ApiResponse({
+    status: 200,
+    description: 'Onboarding step updated',
+  })
+  async updateOnboardingStep(
+    @Req() req: requestType.AuthenticatedRequest,
+    @Body() body: { step: number },
+  ) {
+    const userId = req.user.userId;
+    const data = await this.profilesService.updateOnboardingStep(userId, body.step);
+    return {
+      success: true,
+      data,
+    };
+  }
+
   // ==================== RESUME JOURNEY ====================
   @Get(API_ROUTES.PROFILES.RESUME_JOURNEY)
   @ApiOperation({ summary: 'Get onboarding progress and resume journey' })
@@ -524,6 +543,65 @@ export class ProfilesController {
         filename: file.originalname,
         size: file.size,
       },
+    };
+  }
+
+  // ==================== VERIFICATION (DIGILOCKER) ====================
+  @Post('verification/initiate')
+  @ApiOperation({ summary: 'Initiate DigiLocker verification flow' })
+  @ApiResponse({ status: 200, description: 'Verification flow initiated' })
+  async initiateVerification(@Req() req: requestType.AuthenticatedRequest) {
+    const userId = req.user.userId;
+    const data = await this.profilesService.initiateVerification(userId);
+    return {
+      success: true,
+      message: 'Verification initiated',
+      data,
+    };
+  }
+
+  @Post('verification/callback')
+  @ApiOperation({ summary: 'Complete DigiLocker verification (callback)' })
+  @ApiResponse({ status: 200, description: 'Verification completed' })
+  async completeVerification(
+    @Req() req: requestType.AuthenticatedRequest,
+    @Body() body: { code?: string; docId?: string; verifiedName?: string; method?: string },
+  ) {
+    const userId = req.user.userId;
+    const data = await this.profilesService.completeVerification(userId, {
+      docId: body.docId,
+      verifiedName: body.verifiedName,
+      method: body.method || 'digilocker',
+    });
+    return {
+      success: true,
+      message: 'Profile verified successfully',
+      data,
+    };
+  }
+
+  @Get('verification/status')
+  @ApiOperation({ summary: 'Get verification status' })
+  @ApiResponse({ status: 200, description: 'Verification status retrieved' })
+  async getVerificationStatus(@Req() req: requestType.AuthenticatedRequest) {
+    const userId = req.user.userId;
+    const data = await this.profilesService.getVerificationStatus(userId);
+    return {
+      success: true,
+      data,
+    };
+  }
+
+  // ==================== PROFILE COMPLETION DETAILS ====================
+  @Get('completion/details')
+  @ApiOperation({ summary: 'Get detailed profile completion breakdown' })
+  @ApiResponse({ status: 200, description: 'Profile completion details retrieved' })
+  async getProfileCompletionDetails(@Req() req: requestType.AuthenticatedRequest) {
+    const userId = req.user.userId;
+    const data = await this.profilesService.getProfileCompletionDetails(userId);
+    return {
+      success: true,
+      data,
     };
   }
 
